@@ -51,8 +51,6 @@ class CollabFilterOneVectorPerItem(AbstractBaseCollabFilterSGD):
         '''
         random_state = self.random_state # inherited RandomState object
 
-        # TODO fix the lines below to have right dimensionality & values
-        # TIP: use self.n_factors to access number of hidden dimensions
         self.param_dict = dict(
             mu=ag_np.ones(1),
             b_per_user=ag_np.ones(n_users), # User biases
@@ -80,9 +78,16 @@ class CollabFilterOneVectorPerItem(AbstractBaseCollabFilterSGD):
             Scalar predicted ratings, one per provided example.
             Entry n is for the n-th pair of user_id, item_id values provided.
         '''
-        # TODO: Update with actual prediction logic
+        # Create output array
         N = user_id_N.size
         yhat_N = ag_np.ones(N)
+
+        # Predict step
+        for i in range(len(yhat_N)):
+
+            # Matrix factorization ratings prediction model
+            yhat_N[i] = mu + b_per_user[user_id_N[i]] + c_per_item[item_id_N[i]] + ag_np.dot(U[user_id_N[i], :], V[item_id_N[i], :])
+
         return yhat_N
 
 
@@ -99,12 +104,23 @@ class CollabFilterOneVectorPerItem(AbstractBaseCollabFilterSGD):
         -------
         loss : float scalar
         '''
-        # TODO compute loss
         # TIP: use self.alpha to access regularization strength
-        y_N = data_tuple[2]
-        yhat_N = self.predict(data_tuple[0], data_tuple[1], **param_dict)
-        loss_total = 0.0
-        return loss_total    
+        user_ids, item_ids, y_true = data_tuple
+
+        # Predict ratings
+        y_pred = self.predict(user_ids, item_ids, **param_dict)
+
+        # Compute the mean squared error
+        mse = ag_np.mean((y_true - y_pred) ** 2)
+
+        regularization_term = 0
+        for key in param_dict:
+            regularization_term += ag_np.sum(param_dict[key] ** 2)
+
+        # Total loss: MSE + alpha * regularization
+        total_loss = mse + self.alpha * regularization_term
+
+        return total_loss 
 
 
 if __name__ == '__main__':
