@@ -55,10 +55,10 @@ class CollabFilterOneVectorPerItem(AbstractBaseCollabFilterSGD):
         # TIP: use self.n_factors to access number of hidden dimensions
         self.param_dict = dict(
             mu=ag_np.ones(1),
-            b_per_user=ag_np.ones(1), # FIX dimensionality
-            c_per_item=ag_np.ones(1), # FIX dimensionality
-            U=0.001 * random_state.randn(1), # FIX dimensionality
-            V=0.001 * random_state.randn(1), # FIX dimensionality
+            b_per_user=ag_np.ones(n_users), # User biases
+            c_per_item=ag_np.ones(n_items), # Item biases
+            U=0.001 * random_state.randn(n_users, self.n_factors), # User hidden
+            V=0.001 * random_state.randn(n_items, self.n_factors), # Item hidden
             )
 
 
