@@ -85,8 +85,17 @@ class CollabFilterOneVectorPerItem(AbstractBaseCollabFilterSGD):
         # Predict step
         for i in range(len(yhat_N)):
 
+            print("Dot product:")
+            print(ag_np.dot(U[user_id_N[i], :], V[item_id_N[i], :]))
+
             # Matrix factorization ratings prediction model
-            yhat_N[i] = mu + b_per_user[user_id_N[i]] + c_per_item[item_id_N[i]] + ag_np.dot(U[user_id_N[i], :], V[item_id_N[i], :])
+            try:
+                dot_product = ag_np.dot(U[user_id_N[i], :], V[item_id_N[i], :])
+                curr = mu + b_per_user[user_id_N[i]] + c_per_item[item_id_N[i]] + dot_product
+                yhat_N[i] = float(curr)
+            except ValueError as e:
+                print(i, str(e), "Error here")
+                break
 
         return yhat_N
 
