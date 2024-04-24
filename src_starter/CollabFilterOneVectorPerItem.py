@@ -10,6 +10,8 @@ Scroll down to __main__ to see a usage example.
 # to do all the loss calculations, since automatic gradients are needed
 import autograd.numpy as ag_np
 
+import matplotlib.pyplot as plt
+
 # Use helper packages
 from AbstractBaseCollabFilterSGD import AbstractBaseCollabFilterSGD
 from train_valid_test_loader import load_train_valid_test_datasets
@@ -17,6 +19,7 @@ from train_valid_test_loader import load_train_valid_test_datasets
 # Some packages you might need (uncomment as necessary)
 ## import pandas as pd
 ## import matplotlib
+import numpy as np
 
 # No other imports specific to ML (e.g. scikit) needed!
 
@@ -84,15 +87,35 @@ class CollabFilterOneVectorPerItem(AbstractBaseCollabFilterSGD):
 
         # Predict step
         for i in range(len(yhat_N)):
+            
+            #convert array boxes to np arrays
+            U_np = ag_np.array(U[user_id_N[i], :])
+            V_np = ag_np.array(V[item_id_N[i], :])
 
-            print("Dot product:")
-            print(ag_np.dot(U[user_id_N[i], :], V[item_id_N[i], :]))
+            #convert values to arrayboxes
+            mu_arraybox = ag_np.array(mu)
+            b_per_user_arraybox = ag_np.array(b_per_user[user_id_N[i]])
+            c_per_item_arraybox = ag_np.array(c_per_item[item_id_N[i]])
 
             # Matrix factorization ratings prediction model
             try:
-                dot_product = ag_np.dot(U[user_id_N[i], :], V[item_id_N[i], :])
-                curr = mu + b_per_user[user_id_N[i]] + c_per_item[item_id_N[i]] + dot_product
-                yhat_N[i] = float(curr)
+                dot_product = ag_np.dot(U_np, V_np)
+                curr = mu_arraybox + b_per_user_arraybox + c_per_item_arraybox + dot_product
+
+                #cast curr to an arraybox if it isn't one
+                if not isinstance(curr, ag_np.numpy_boxes.ArrayBox):
+                    curr = ag_np.array(curr)
+                #this casting doesn't work always for some reason
+
+                
+                #get new value of yhat_N[i] depending on type of array
+                if isinstance(curr, ag_np.numpy_boxes.ArrayBox):
+                    yhat_N[i] = curr._value
+                elif isinstance(curr, np.ndarray):
+                    yhat_N[i] = curr.item()
+                else:
+                    yhat_N[i] = curr
+
             except ValueError as e:
                 print(i, str(e), "Error here")
                 break
@@ -145,4 +168,5 @@ if __name__ == '__main__':
     model.init_parameter_dict(n_users, n_items, train_tuple)
 
     # Fit the model with SGD
-    model.fit(train_tuple, valid_tuple)
+    epoch_list, mae_list = model.fit(train_tuple, valid_tuple)
+    plt.scatter(epoch_list, mae_list)

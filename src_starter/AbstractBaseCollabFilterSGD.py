@@ -4,6 +4,7 @@ import os
 import sys
 import pandas as pd
 from sklearn import metrics
+import matplotlib.pyplot as plt
 
 class AbstractBaseCollabFilterSGD(object):
     """ Base class for user-movie rating prediction via matrix factorization.
@@ -106,6 +107,11 @@ class AbstractBaseCollabFilterSGD(object):
             self.param_dict, data_tuple)
         grad_dict = grad_dict_tuple[0] # Unpack tuple output of autograd
         return loss, grad_dict
+    
+    def calc_mae(self, param_dict, data_tuple):
+        y_pred = self.predict(data_tuple[0], data_tuple[1], **param_dict)
+        mean_error = np.mean(np.abs(data_tuple[2] - y_pred))
+        return mean_error
 
     def fit(self, train_data_tuple, valid_data_tuple=None):
         """ Fit latent factor model to user-movie ratings via gradient descent.
@@ -154,6 +160,7 @@ class AbstractBaseCollabFilterSGD(object):
         self.trace_smooth_loss = []
         self.trace_auc_train = []
         self.trace_auc_valid = []
+        self.trace_mae = []
 
         self.all_loss = []
 
@@ -221,7 +228,10 @@ class AbstractBaseCollabFilterSGD(object):
                         epoch, loss if epoch <= 2 else smooth_loss,
                         train_perf_dict['auc'], valid_perf_dict['auc'],
                         avg_grad_norm_str))
-
+                    
+                    mae = self.calc_mae(self.param_dict, batch_tuple)
+                    self.trace_mae.append(mae)
+                
                 ## Update each parameter by taking step in direction of gradient
                 epoch += n_per_batch / n_total 
                 for key, arr in self.param_dict.items():
@@ -229,6 +239,7 @@ class AbstractBaseCollabFilterSGD(object):
 
         # That's all folks.
 
+        return self.trace_epoch, self.trace_mae
 
     def check_if_report_progress_now(
             self, epoch_count, max_epoch,
