@@ -58,8 +58,8 @@ class CollabFilterOneVectorPerItem(AbstractBaseCollabFilterSGD):
             mu=ag_np.ones(1),
             b_per_user=ag_np.ones(n_users), # User biases
             c_per_item=ag_np.ones(n_items), # Item biases
-            U=0.001 * random_state.randn(n_users, self.n_factors), # User hidden
-            V=0.001 * random_state.randn(n_items, self.n_factors), # Item hidden
+            U=0.01 * random_state.randn(n_users, self.n_factors), # User hidden
+            V=0.01 * random_state.randn(n_items, self.n_factors), # Item hidden
             )
 
 
@@ -92,7 +92,7 @@ class CollabFilterOneVectorPerItem(AbstractBaseCollabFilterSGD):
             U_np = ag_np.array(U[user_id_N[i], :])
             V_np = ag_np.array(V[item_id_N[i], :])
 
-            #convert values to arrayboxes
+            # convert values to arrayboxes
             mu_arraybox = ag_np.array(mu)
             b_per_user_arraybox = ag_np.array(b_per_user[user_id_N[i]])
             c_per_item_arraybox = ag_np.array(c_per_item[item_id_N[i]])
@@ -163,10 +163,16 @@ if __name__ == '__main__':
     # Create the model and initialize its parameters
     # to have right scale as the dataset (right num users and items)
     model = CollabFilterOneVectorPerItem(
-        n_epochs=10, batch_size=10000, step_size=0.1,
-        n_factors=2, alpha=0.0)
+        n_epochs=600, batch_size=32, step_size=0.2,
+        n_factors=10, alpha=0.0)
     model.init_parameter_dict(n_users, n_items, train_tuple)
 
     # Fit the model with SGD
-    epoch_list, mae_list = model.fit(train_tuple, valid_tuple)
-    plt.scatter(epoch_list, mae_list)
+    epochs, trainMAE, validMAE = model.fit(train_tuple, valid_tuple)
+    plt.plot(epochs, trainMAE, validMAE)
+    plt.title('MAE by epoch - K=2')
+    plt.xlabel('Epoch')
+    plt.ylabel('MAE')
+    plt.legend()
+    plt.ylim(0.5, 1.5)
+    plt.savefig('k2_graph')
