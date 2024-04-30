@@ -10,6 +10,8 @@ Scroll down to __main__ to see a usage example.
 # to do all the loss calculations, since automatic gradients are needed
 import autograd.numpy as ag_np
 
+import matplotlib.pyplot as plt
+
 # Use helper packages
 from AbstractBaseCollabFilterSGD import AbstractBaseCollabFilterSGD
 from train_valid_test_loader import load_train_valid_test_datasets
@@ -162,8 +164,14 @@ if __name__ == '__main__':
     # to have right scale as the dataset (right num users and items)
     model = CollabFilterOneVectorPerItem(
         n_epochs=10, batch_size=10000, step_size=0.1,
-        n_factors=2, alpha=0.0)
+        n_factors=50, alpha=0.0)
     model.init_parameter_dict(n_users, n_items, train_tuple)
 
     # Fit the model with SGD
-    model.fit(train_tuple, valid_tuple)
+    epoch_list, mae_list = model.fit(train_tuple, valid_tuple)
+    plt.plot(epoch_list, mae_list)
+    plt.title('MAE by epoch - K=50')
+    plt.xlabel('Epoch')
+    plt.ylabel('MAE')
+    plt.ylim(0.5, 1.5)
+    plt.savefig('k50_graph')
