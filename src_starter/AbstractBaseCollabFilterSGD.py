@@ -4,10 +4,10 @@ import os
 import sys
 import pandas as pd
 from sklearn import metrics
-import matplotlib.pyplot as plt
 
 class AbstractBaseCollabFilterSGD(object):
     """ Base class for user-movie rating prediction via matrix factorization.
+
     Attributes set by calling __init__()
     ------------------------------------
     step_size  : float
@@ -15,6 +15,7 @@ class AbstractBaseCollabFilterSGD(object):
     batch_size : int
     n_factors  : int [optional]
     alpha      : float [optional]
+
     Attributes set after calling init_param_dict() and updated by fit()
     -------------------------------------------------------------------
     param_dict : dict
@@ -25,8 +26,9 @@ class AbstractBaseCollabFilterSGD(object):
 
     def __init__(self,
             step_size=0.1, n_epochs=100, batch_size=1000,
-            n_factors=50, alpha=0.00, random_state=20190415):
+            n_factors=0, alpha=0.00, random_state=20190415):
         """ Construct instance and set its attributes
+
         Args
         ----
         step_size  : float
@@ -42,6 +44,7 @@ class AbstractBaseCollabFilterSGD(object):
             (Will be unused by simpler models).
         alpha : float
             Regularization strength (must be >= 0.0).
+
         Returns
         -------
         New instance of this class
@@ -59,6 +62,7 @@ class AbstractBaseCollabFilterSGD(object):
 
     def evaluate_perf_metrics(self, user_id_N, item_id_N, ratings_N):
         ''' Evaluate performance metrics for current model on given dataset.
+
         Returns
         -------
         perf_dict : dict
@@ -79,9 +83,12 @@ class AbstractBaseCollabFilterSGD(object):
 
     def calc_loss_and_grad_wrt_parameter_dict(self, param_dict, data_tuple):
         ''' Compute loss and gradient at specific parameters.
+
         Uses autograd package to compute gradients.
+
         Subclasses should NOT need to override this in general, as long as
         the method `calc_loss_wrt_parameter_dict` is written correctly.
+
         Returns
         -------
         loss : scalar
@@ -100,33 +107,38 @@ class AbstractBaseCollabFilterSGD(object):
         grad_dict = grad_dict_tuple[0] # Unpack tuple output of autograd
         return loss, grad_dict
 
-    # def calc_mae(self, param_dict, data_tuple):
-    #     y_pred = self.predict(data_tuple[0], data_tuple[1], **param_dict)
-    #     mean_error = np.mean(np.abs(data_tuple[2] - y_pred))
-    #     return mean_error
-
     def fit(self, train_data_tuple, valid_data_tuple=None):
         """ Fit latent factor model to user-movie ratings via gradient descent.
+
         Calling this method will attempt to solve the optimization problem:
+
             U^*, V^* = min_{U, V} loss_total(r, U, V)
+
         given a dataset of N user-item ratings r_{i,j} for user i and item j.
+
         The loss has two terms, the error and regularization penalty:
+
             loss_total(r, U, V) = error(r, U, V) + \alpha * penalty(U, V)
+
         The regression error term is just squared error over observed ratings:
         
             error(r, U, V) = \sum_{i,j} ( r_i,j - dot(U[i], V[j]) )^2
         
         And the regularization penalty is:
+
             penalty(U, V) = \sum_i L2norm(U_i) + \sum_j L2norm(V_j)
+
         Args
         ----
         train_data_tuple : length-3 tuple
             Looks like (user_id, item_id, rating)
         valid_data_tuple : length-3 tuple
             Looks like (user_id, item_id, rating)
+
         Returns
         -------
         None.
+
         Post Condition
         --------------
         Internal `param_dict` attribute updated.
@@ -220,14 +232,16 @@ class AbstractBaseCollabFilterSGD(object):
                     arr[:] = arr - self.step_size * grad_dict[key]
 
         # That's all folks.
-        return self.trace_epoch, self.trace_mae_train, self.trace_mae_valid
+
 
     def check_if_report_progress_now(
             self, epoch_count, max_epoch,
             batch_count_within_epoch, max_batch_per_epoch):
         ''' Helper method to decide when to report progress on valid set.
+
         Will check current training progress (num steps completed, etc.)
         and determine if we should perform validation set diagnostics now.
+
         Returns
         -------
         do_report_now : boolean
@@ -269,9 +283,12 @@ class AbstractBaseCollabFilterSGD(object):
 
 class RatingsMiniBatchIterator(object):
     """ Iterator to loop through small batches of (user,item,rating) examples
+
     Given arrays defining (i, j, k) values,
     will produce minibatches of these values of desired batch size.
+
     Final batch may be (much) smaller than desired batch size.
+
     Usage
     -----
     >>> x = np.arange(7)
@@ -284,6 +301,7 @@ class RatingsMiniBatchIterator(object):
     (array([0, 1, 2]), array([0, 1, 2]), array([0, 1, 2]))
     (array([3, 4, 5]), array([3, 4, 5]), array([3, 4, 5]))
     (array([6]), array([6]), array([6]))
+
     # Shuffle and show another epoch
     >>> batch_loader.shuffle()
     >>> for batch in batch_loader:
@@ -291,6 +309,7 @@ class RatingsMiniBatchIterator(object):
     (array([6, 2, 0]), array([6, 2, 0]), array([6, 2, 0]))
     (array([3, 5, 4]), array([3, 5, 4]), array([3, 5, 4]))
     (array([1]), array([1]), array([1]))
+
     # Shuffle and show another epoch
     >>> batch_loader.shuffle()
     >>> for batch in batch_loader:
@@ -302,6 +321,7 @@ class RatingsMiniBatchIterator(object):
 
     def __init__(self, us, vs, ratings, random_state=np.random, batch_size=64):
         ''' Construct iterator and set its attributes
+
         Args
         ----
         us : int array
@@ -337,6 +357,7 @@ class RatingsMiniBatchIterator(object):
 
     def shuffle(self, random_state=None):
         """ Shuffle internal dataset to a random order
+
         Returns
         -------
         Nothing.
@@ -351,6 +372,7 @@ class RatingsMiniBatchIterator(object):
 
     def __next__(self):
         """ Get next batch of ratings data
+
         Returns
         -------
         u : 1D array of int
@@ -375,10 +397,12 @@ class RatingsMiniBatchIterator(object):
 
     def __iter__(self):
         ''' Allow using this object directly as an iterator
+
         That is, we can use syntax like:
         
         for batch in RatingsMiniBatchIterator(...):
             do something
+
         This method tells python that this object supports this.
         '''
         return self

@@ -162,17 +162,60 @@ if __name__ == '__main__':
         load_train_valid_test_datasets()
     # Create the model and initialize its parameters
     # to have right scale as the dataset (right num users and items)
-    model = CollabFilterOneVectorPerItem(
-        n_epochs=600, batch_size=32, step_size=0.2,
-        n_factors=10, alpha=0.0)
-    model.init_parameter_dict(n_users, n_items, train_tuple)
+
+    print(test_tuple)
+
+    #2 factors
+    model_2 = CollabFilterOneVectorPerItem(
+        n_epochs=5, batch_size=32, step_size=0.2,
+        n_factors=2, alpha=0.0)
+    model_2.init_parameter_dict(n_users, n_items, train_tuple)
 
     # Fit the model with SGD
-    epochs, trainMAE, validMAE = model.fit(train_tuple, valid_tuple)
-    plt.plot(epochs, trainMAE, validMAE)
+    model_2.fit(train_tuple, valid_tuple)
+
+    epoch_list = model_2.trace_epoch
+    mae_list_train = model_2.trace_mae_train
+    mae_list_valid = model_2.trace_mae_valid
+    plt.plot(epoch_list, mae_list_train, mae_list_valid)
     plt.title('MAE by epoch - K=2')
     plt.xlabel('Epoch')
     plt.ylabel('MAE')
-    plt.legend()
-    plt.ylim(0.5, 1.5)
     plt.savefig('k2_graph')
+
+    #10 factors
+    model_10 = CollabFilterOneVectorPerItem(
+        n_epochs=5, batch_size=32, step_size=0.2,
+        n_factors=10, alpha=0.0)
+    model_10.init_parameter_dict(n_users, n_items, train_tuple)
+
+    # Fit the model with SGD
+    model_10.fit(train_tuple, valid_tuple)
+
+    epoch_list = model_10.trace_epoch
+    mae_list_train = model_10.trace_mae_train
+    mae_list_valid = model_10.trace_mae_valid
+    plt.plot(epoch_list, mae_list_train, mae_list_valid)
+    plt.title('MAE by epoch - K=10')
+    plt.xlabel('Epoch')
+    plt.ylabel('MAE')
+    plt.savefig('k10_graph')
+
+    #50 factors
+    model_50 = CollabFilterOneVectorPerItem(
+        n_epochs=5, batch_size=32, step_size=0.2,
+        n_factors=50, alpha=0.0)
+    model_50.init_parameter_dict(n_users, n_items, train_tuple)
+
+    # Fit the model with SGD
+    model_50.fit(train_tuple, valid_tuple)
+
+    epoch_list = model_10.trace_epoch
+    mae_list_train = model_10.trace_mae_train
+    mae_list_valid = model_10.trace_mae_valid
+    plt.plot(epoch_list, mae_list_train, mae_list_valid)
+    plt.title('MAE by epoch - K=50')
+    plt.xlabel('Epoch')
+    plt.ylabel('MAE')
+    plt.savefig('k50_graph')
+
