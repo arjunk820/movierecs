@@ -205,6 +205,11 @@ class AbstractBaseCollabFilterSGD(object):
                     self.trace_auc_valid.append(valid_perf_dict['auc'])
                     self.trace_mae_train.append(train_perf_dict['mae'])
                     self.trace_mae_valid.append(valid_perf_dict['mae'])
+                    print('length of train MAE', len(self.trace_mae_train))
+
+                    print("Epoch:", epoch)
+                    print("Train MAE:", train_perf_dict['mae'])
+                    print("Valid MAE:", valid_perf_dict['mae'])
 
                     # Compute 'smoothed' loss by averaging over last B batches
                     # Might remove some of the stochasticity in using only the

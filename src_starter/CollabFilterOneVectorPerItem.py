@@ -58,12 +58,12 @@ class CollabFilterOneVectorPerItem(AbstractBaseCollabFilterSGD):
             mu=ag_np.ones(1),
             b_per_user=ag_np.ones(n_users), # User biases
             c_per_item=ag_np.ones(n_items), # Item biases
-            U=0.01 * random_state.randn(n_users, self.n_factors), # User hidden
-            V=0.01 * random_state.randn(n_items, self.n_factors), # Item hidden
+            U=ag_np.array(0.01 * random_state.randn(n_users, self.n_factors)), # User hidden
+            V=ag_np.array(0.01 * random_state.randn(n_items, self.n_factors)), # Item hidden
             )
 
 
-    def predict(self, user_id_N, item_id_N,
+    def predict_1(self, user_id_N, item_id_N,
                 mu=None, b_per_user=None, c_per_item=None, U=None, V=None):
         ''' Predict ratings at specific user_id, item_id pairs
 
@@ -85,7 +85,7 @@ class CollabFilterOneVectorPerItem(AbstractBaseCollabFilterSGD):
         N = user_id_N.size
         yhat_N = ag_np.ones(N)
 
-        # Predict step
+         # Predict step
         for i in range(len(yhat_N)):
             
             #convert array boxes to np arrays
@@ -121,6 +121,17 @@ class CollabFilterOneVectorPerItem(AbstractBaseCollabFilterSGD):
                 break
 
         return yhat_N
+    
+    def predict(self, user_id_N, item_id_N,
+                mu=None, b_per_user=None, c_per_item=None, U=None, V=None):
+        
+        inner_product = ag_np.sum(U[user_id_N] * V[item_id_N], axis = 1)
+        
+        res = b_per_user[user_id_N] + c_per_item[item_id_N] + mu + inner_product
+
+        return res
+
+
 
 
     def calc_loss_wrt_parameter_dict(self, param_dict, data_tuple):
@@ -143,14 +154,13 @@ class CollabFilterOneVectorPerItem(AbstractBaseCollabFilterSGD):
         y_pred = self.predict(user_ids, item_ids, **param_dict)
 
         # Compute the mean squared error
-        mse = ag_np.mean((y_true - y_pred) ** 2)
+        mse = ag_np.sum((y_true - y_pred) ** 2)
 
-        regularization_term = 0
-        for key in param_dict:
-            regularization_term += ag_np.sum(param_dict[key] ** 2)
+        regularization_term_u = ag_np.sum(param_dict['U'][user_ids] ** 2)
+        regularization_term_v = ag_np.sum(param_dict['V'][user_ids] ** 2)
 
         # Total loss: MSE + alpha * regularization
-        total_loss = mse + self.alpha * regularization_term
+        total_loss = mse + self.alpha * (regularization_term_u + regularization_term_v)
 
         return total_loss 
 
@@ -163,59 +173,73 @@ if __name__ == '__main__':
     # Create the model and initialize its parameters
     # to have right scale as the dataset (right num users and items)
 
-    print(test_tuple)
 
     #2 factors
     model_2 = CollabFilterOneVectorPerItem(
-        n_epochs=5, batch_size=32, step_size=0.2,
+        n_epochs=150, batch_size=32, step_size=0.2,
         n_factors=2, alpha=0.0)
     model_2.init_parameter_dict(n_users, n_items, train_tuple)
 
     # Fit the model with SGD
     model_2.fit(train_tuple, valid_tuple)
 
-    epoch_list = model_2.trace_epoch
-    mae_list_train = model_2.trace_mae_train
-    mae_list_valid = model_2.trace_mae_valid
-    plt.plot(epoch_list, mae_list_train, mae_list_valid)
-    plt.title('MAE by epoch - K=2')
-    plt.xlabel('Epoch')
-    plt.ylabel('MAE')
-    plt.savefig('k2_graph')
-
     #10 factors
     model_10 = CollabFilterOneVectorPerItem(
-        n_epochs=5, batch_size=32, step_size=0.2,
+        n_epochs=150, batch_size=32, step_size=0.2,
         n_factors=10, alpha=0.0)
     model_10.init_parameter_dict(n_users, n_items, train_tuple)
 
     # Fit the model with SGD
     model_10.fit(train_tuple, valid_tuple)
 
-    epoch_list = model_10.trace_epoch
-    mae_list_train = model_10.trace_mae_train
-    mae_list_valid = model_10.trace_mae_valid
-    plt.plot(epoch_list, mae_list_train, mae_list_valid)
-    plt.title('MAE by epoch - K=10')
-    plt.xlabel('Epoch')
-    plt.ylabel('MAE')
-    plt.savefig('k10_graph')
-
     #50 factors
     model_50 = CollabFilterOneVectorPerItem(
-        n_epochs=5, batch_size=32, step_size=0.2,
+        n_epochs=150, batch_size=32, step_size=0.2,
         n_factors=50, alpha=0.0)
     model_50.init_parameter_dict(n_users, n_items, train_tuple)
 
     # Fit the model with SGD
     model_50.fit(train_tuple, valid_tuple)
 
-    epoch_list = model_10.trace_epoch
-    mae_list_train = model_10.trace_mae_train
-    mae_list_valid = model_10.trace_mae_valid
-    plt.plot(epoch_list, mae_list_train, mae_list_valid)
+    #Plot for model with 2 factors
+    plt.figure(figsize=(8, 6))
+    epoch_list_2 = model_2.trace_epoch
+    mae_list_train_2 = model_2.trace_mae_train
+    mae_list_valid_2 = model_2.trace_mae_valid
+    plt.plot(epoch_list_2, mae_list_train_2, label='Train - K=2')
+    plt.plot(epoch_list_2, mae_list_valid_2, label='Valid - K=2')
+    plt.title('MAE by epoch - K=2')
+    plt.xlabel('Epoch')
+    plt.ylabel('MAE')
+    plt.legend()
+    plt.savefig('k2_graph.png')
+    plt.close()
+
+    # Plot for model with 10 factors
+    plt.figure(figsize=(8, 6))
+    epoch_list_10 = model_10.trace_epoch
+    mae_list_train_10 = model_10.trace_mae_train
+    mae_list_valid_10 = model_10.trace_mae_valid
+    plt.plot(epoch_list_10, mae_list_train_10, label='Train - K=10')
+    plt.plot(epoch_list_10, mae_list_valid_10, label='Valid - K=10')
+    plt.title('MAE by epoch - K=10')
+    plt.xlabel('Epoch')
+    plt.ylabel('MAE')
+    plt.legend()
+    plt.savefig('k10_graph.png')
+    plt.close()
+
+    # Plot for model with 50 factors
+    plt.figure(figsize=(8, 6))
+    epoch_list_50 = model_50.trace_epoch
+    mae_list_train_50 = model_50.trace_mae_train
+    mae_list_valid_50 = model_50.trace_mae_valid
+    plt.plot(epoch_list_50, mae_list_train_50, label='Train - K=50')
+    plt.plot(epoch_list_50, mae_list_valid_50, label='Valid - K=50')
     plt.title('MAE by epoch - K=50')
     plt.xlabel('Epoch')
     plt.ylabel('MAE')
-    plt.savefig('k50_graph')
+    plt.legend()
+    plt.savefig('k50_graph.png')
+    plt.close()
 
