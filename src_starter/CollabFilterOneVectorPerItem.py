@@ -174,72 +174,107 @@ if __name__ == '__main__':
     # to have right scale as the dataset (right num users and items)
 
 
-    #2 factors
-    model_2 = CollabFilterOneVectorPerItem(
+    # #2 factors
+    # model_2 = CollabFilterOneVectorPerItem(
+    #     n_epochs=150, batch_size=32, step_size=0.2,
+    #     n_factors=2, alpha=0.0)
+    # model_2.init_parameter_dict(n_users, n_items, train_tuple)
+
+    # # Fit the model with SGD
+    # model_2.fit(train_tuple, valid_tuple)
+
+    # #10 factors
+    # model_10 = CollabFilterOneVectorPerItem(
+    #     n_epochs=150, batch_size=32, step_size=0.2,
+    #     n_factors=10, alpha=0.0)
+    # model_10.init_parameter_dict(n_users, n_items, train_tuple)
+
+    # # Fit the model with SGD
+    # model_10.fit(train_tuple, valid_tuple)
+
+    # #50 factors
+    # model_50 = CollabFilterOneVectorPerItem(
+    #     n_epochs=150, batch_size=32, step_size=0.2,
+    #     n_factors=50, alpha=0.0)
+    # model_50.init_parameter_dict(n_users, n_items, train_tuple)
+
+    # # Fit the model with SGD
+    # model_50.fit(train_tuple, valid_tuple)
+
+    # #Plot for model with 2 factors
+    # plt.figure(figsize=(8, 6))
+    # epoch_list_2 = model_2.trace_epoch
+    # mae_list_train_2 = model_2.trace_mae_train
+    # mae_list_valid_2 = model_2.trace_mae_valid
+    # plt.plot(epoch_list_2, mae_list_train_2, label='Train - K=2')
+    # plt.plot(epoch_list_2, mae_list_valid_2, label='Valid - K=2')
+    # plt.title('MAE by epoch - K=2')
+    # plt.xlabel('Epoch')
+    # plt.ylabel('MAE')
+    # plt.legend()
+    # plt.savefig('k2_graph.png')
+    # plt.close()
+
+    # # Plot for model with 10 factors
+    # plt.figure(figsize=(8, 6))
+    # epoch_list_10 = model_10.trace_epoch
+    # mae_list_train_10 = model_10.trace_mae_train
+    # mae_list_valid_10 = model_10.trace_mae_valid
+    # plt.plot(epoch_list_10, mae_list_train_10, label='Train - K=10')
+    # plt.plot(epoch_list_10, mae_list_valid_10, label='Valid - K=10')
+    # plt.title('MAE by epoch - K=10')
+    # plt.xlabel('Epoch')
+    # plt.ylabel('MAE')
+    # plt.legend()
+    # plt.savefig('k10_graph.png')
+    # plt.close()
+
+    # # Plot for model with 50 factors
+    # plt.figure(figsize=(8, 6))
+    # epoch_list_50 = model_50.trace_epoch
+    # mae_list_train_50 = model_50.trace_mae_train
+    # mae_list_valid_50 = model_50.trace_mae_valid
+    # plt.plot(epoch_list_50, mae_list_train_50, label='Train - K=50')
+    # plt.plot(epoch_list_50, mae_list_valid_50, label='Valid - K=50')
+    # plt.title('MAE by epoch - K=50')
+    # plt.xlabel('Epoch')
+    # plt.ylabel('MAE')
+    # plt.legend()
+    # plt.savefig('k50_graph.png')
+    # plt.close()
+
+
+    #part 2 - experimenting with alpha
+
+    alpha_list = [0.001, 0.01, 0.1, 1, 10]
+
+    for alpha in alpha_list:
+        
+        #create model
+        model = CollabFilterOneVectorPerItem(
         n_epochs=150, batch_size=32, step_size=0.2,
-        n_factors=2, alpha=0.0)
-    model_2.init_parameter_dict(n_users, n_items, train_tuple)
+        n_factors=50, alpha= alpha)
 
-    # Fit the model with SGD
-    model_2.fit(train_tuple, valid_tuple)
+        #initialize model with data
+        model.init_parameter_dict(n_users, n_items, train_tuple)
 
-    #10 factors
-    model_10 = CollabFilterOneVectorPerItem(
-        n_epochs=150, batch_size=32, step_size=0.2,
-        n_factors=10, alpha=0.0)
-    model_10.init_parameter_dict(n_users, n_items, train_tuple)
+        # Fit the model with SGD
+        model.fit(train_tuple, valid_tuple)
 
-    # Fit the model with SGD
-    model_10.fit(train_tuple, valid_tuple)
+        # Create a plot for model performance
+        plt.figure(figsize=(8, 6))
+        epoch_list = model.trace_epoch
+        mae_list_train = model.trace_mae_train
+        mae_list_valid = model.trace_mae_valid
+        plt.plot(epoch_list, mae_list_train, label=f'Train - alpha = {alpha}')
+        plt.plot(epoch_list, mae_list_valid, label=f'Valid - alpha = {alpha}')
+        plt.title(f'MAE by epoch - alpha = {alpha}')
+        plt.xlabel('Epoch')
+        plt.ylabel('MAE')
+        plt.legend()
+        plt.savefig(f'alpha_{alpha}_graph.png')
+        plt.close()
 
-    #50 factors
-    model_50 = CollabFilterOneVectorPerItem(
-        n_epochs=150, batch_size=32, step_size=0.2,
-        n_factors=50, alpha=0.0)
-    model_50.init_parameter_dict(n_users, n_items, train_tuple)
 
-    # Fit the model with SGD
-    model_50.fit(train_tuple, valid_tuple)
 
-    #Plot for model with 2 factors
-    plt.figure(figsize=(8, 6))
-    epoch_list_2 = model_2.trace_epoch
-    mae_list_train_2 = model_2.trace_mae_train
-    mae_list_valid_2 = model_2.trace_mae_valid
-    plt.plot(epoch_list_2, mae_list_train_2, label='Train - K=2')
-    plt.plot(epoch_list_2, mae_list_valid_2, label='Valid - K=2')
-    plt.title('MAE by epoch - K=2')
-    plt.xlabel('Epoch')
-    plt.ylabel('MAE')
-    plt.legend()
-    plt.savefig('k2_graph.png')
-    plt.close()
-
-    # Plot for model with 10 factors
-    plt.figure(figsize=(8, 6))
-    epoch_list_10 = model_10.trace_epoch
-    mae_list_train_10 = model_10.trace_mae_train
-    mae_list_valid_10 = model_10.trace_mae_valid
-    plt.plot(epoch_list_10, mae_list_train_10, label='Train - K=10')
-    plt.plot(epoch_list_10, mae_list_valid_10, label='Valid - K=10')
-    plt.title('MAE by epoch - K=10')
-    plt.xlabel('Epoch')
-    plt.ylabel('MAE')
-    plt.legend()
-    plt.savefig('k10_graph.png')
-    plt.close()
-
-    # Plot for model with 50 factors
-    plt.figure(figsize=(8, 6))
-    epoch_list_50 = model_50.trace_epoch
-    mae_list_train_50 = model_50.trace_mae_train
-    mae_list_valid_50 = model_50.trace_mae_valid
-    plt.plot(epoch_list_50, mae_list_train_50, label='Train - K=50')
-    plt.plot(epoch_list_50, mae_list_valid_50, label='Valid - K=50')
-    plt.title('MAE by epoch - K=50')
-    plt.xlabel('Epoch')
-    plt.ylabel('MAE')
-    plt.legend()
-    plt.savefig('k50_graph.png')
-    plt.close()
 
