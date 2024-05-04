@@ -39,6 +39,10 @@ def create_vectors(train_tuple, valid_tuple, n_users, n_items):
 
     rating_list = list(rating_list_train + rating_list_valid)
 
+    #
+    binary_rating_list = [1 if rating >= 4.5 else 0 for rating in rating_list]
+
+
     #create dataframe
     data = pd.DataFrame({
         'user': user_list,
@@ -46,13 +50,57 @@ def create_vectors(train_tuple, valid_tuple, n_users, n_items):
         'user_age': user_ages,
         'user_gender': user_genders,
         'movie_year': movie_years,
-        'rating': rating_list
+        'binary_rating': binary_rating_list
     })    
     
     return data
     
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_auc_score
+
+# # Split the dataset into training and testing sets
+# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# # Initialize and train the logistic regression model
+# model = LogisticRegression(max_iter=1000, random_state=42)
+# model.fit(X_train, y_train)
+
+# # Predict probabilities for the test set
+# y_probs = model.predict_proba(X_test)[:, 1]  # get the probability of the positive class
+
+# # Evaluate the model using the AUC-ROC score
+# auc_score = roc_auc_score(y_test, y_probs)
+# print("AUC-ROC Score:", auc_score)
+
+
+def fit_predict_logistic(data):
 
     
+
+    #identify feature and target variable
+    X = data.iloc[:, :-1]  # feature vectors
+    y = data.iloc[:, -1]   # labels
+
+    X.shape
+
+    #split into train and test
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+  
+    #build model
+    model = LogisticRegression(max_iter=1000, random_state=42)
+
+    #fit model to train data
+    model.fit(X_train, y_train)
+
+    #make predictions
+    y_pred = model.predict(X_test)  # get the probability of the positive class
+
+    # Evaluate the model using the AUC-ROC score
+    auc_score = roc_auc_score(y_test, y_pred)
+    print("AUC-ROC Score:", auc_score)
+
 
 
 if __name__ == '__main__':
@@ -61,4 +109,6 @@ if __name__ == '__main__':
     train_tuple, valid_tuple, test_tuple, n_users, n_items = \
         load_train_valid_test_datasets()
     
-    create_vectors(train_tuple, valid_tuple, n_users, n_items)
+    data = create_vectors(train_tuple, valid_tuple, n_users, n_items)
+
+    fit_predict_logistic(data)
