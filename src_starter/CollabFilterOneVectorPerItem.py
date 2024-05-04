@@ -246,34 +246,79 @@ if __name__ == '__main__':
 
     #part 2 - experimenting with alpha
 
-    alpha_list = [0.001, 0.01, 0.1, 1, 10]
+    # alpha_list = [0.001, 0.01, 0.1, 1, 10]
 
-    for alpha in alpha_list:
+    # for alpha in alpha_list:
         
-        #create model
-        model = CollabFilterOneVectorPerItem(
-        n_epochs=150, batch_size=32, step_size=0.2,
-        n_factors=50, alpha= alpha)
+    #     #create model
+    #     model = CollabFilterOneVectorPerItem(
+    #     n_epochs=150, batch_size=32, step_size=0.2,
+    #     n_factors=50, alpha= alpha)
 
-        #initialize model with data
-        model.init_parameter_dict(n_users, n_items, train_tuple)
+    #     #initialize model with data
+    #     model.init_parameter_dict(n_users, n_items, train_tuple)
 
-        # Fit the model with SGD
-        model.fit(train_tuple, valid_tuple)
+    #     # Fit the model with SGD
+    #     model.fit(train_tuple, valid_tuple)
 
-        # Create a plot for model performance
-        plt.figure(figsize=(8, 6))
-        epoch_list = model.trace_epoch
-        mae_list_train = model.trace_mae_train
-        mae_list_valid = model.trace_mae_valid
-        plt.plot(epoch_list, mae_list_train, label=f'Train - alpha = {alpha}')
-        plt.plot(epoch_list, mae_list_valid, label=f'Valid - alpha = {alpha}')
-        plt.title(f'MAE by epoch - alpha = {alpha}')
-        plt.xlabel('Epoch')
-        plt.ylabel('MAE')
-        plt.legend()
-        plt.savefig(f'alpha_{alpha}_graph.png')
-        plt.close()
+    #     # Create a plot for model performance
+    #     plt.figure(figsize=(8, 6))
+    #     epoch_list = model.trace_epoch
+    #     mae_list_train = model.trace_mae_train
+    #     mae_list_valid = model.trace_mae_valid
+    #     plt.plot(epoch_list, mae_list_train, label=f'Train - alpha = {alpha}')
+    #     plt.plot(epoch_list, mae_list_valid, label=f'Valid - alpha = {alpha}')
+    #     plt.title(f'MAE by epoch - alpha = {alpha}')
+    #     plt.xlabel('Epoch')
+    #     plt.ylabel('MAE')
+    #     plt.legend()
+    #     plt.savefig(f'alpha_{alpha}_graph.png')
+    #     plt.close()
+
+    #part 3
+    import pandas as pd
+
+    #get csv of selected movies
+    selected_movies = pd.read_csv('../data_movie_lens_100k/select_movies.csv')
+    
+    #grab movie IDs
+    selected_movie_ids = list(selected_movies['item_id'])
+
+    # Create an instance of the model
+    model = CollabFilterOneVectorPerItem(
+        n_epochs=600, batch_size=32, step_size=0.2,
+        n_factors=2, alpha=0.1)  # Choose appropriate parameters
+
+    # Initialize the model's parameter dictionary
+    model.init_parameter_dict(n_users, n_items, train_tuple)
+
+    # Fit the model with the training data
+    model.fit(train_tuple, valid_tuple)
+
+    # Access the embedding matrices U and V from the param_dict attribute
+    U_matrix = model.param_dict['U']  # User embedding matrix
+    V_matrix = model.param_dict['V']  # Item embedding matrix
+
+    #get only selected movies
+    selected_V_matrix = V_matrix[selected_movie_ids]
+
+    #plot embedding vectors
+    plt.figure(figsize=(8, 6))
+    plt.scatter(selected_V_matrix[:,0], selected_V_matrix[:,1])
+
+    #plot movie titles on scatterplot
+    for i, movie_id in enumerate(selected_movie_ids):
+        movie_title = selected_movies[selected_movies['item_id'] == movie_id]['title'].values[0]
+        plt.text(selected_V_matrix[i, 0], selected_V_matrix[i, 1], movie_title)
+
+
+
+    plt.xlabel('Embedding Dimension 1')
+    plt.ylabel('Embedding Dimension 2')
+    plt.title('Embedding Vectors for Selected Movies')
+    plt.savefig('embeddings.png')
+    plt.close()
+
 
 
 
