@@ -174,7 +174,8 @@ def grid_search_rf(data):
     rf_classifier = RandomForestClassifier(random_state=42)
 
     # Initialize GridSearch
-    grid_search = GridSearchCV(estimator=rf_classifier, param_grid=param_grid, cv=5, n_jobs=-1)
+    grid_search = GridSearchCV(estimator=rf_classifier, param_grid=param_grid, cv=5,
+                                n_jobs=-1, scoring= 'balanced_accuracy')
 
     # Fit the grid search to the training data
     grid_search.fit(X_train, y_train)
