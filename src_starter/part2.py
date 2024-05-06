@@ -204,13 +204,14 @@ def fit_predict_rf(model, data):
 
     #make predictions
     y_pred = model.predict(X_test)  # get the probability of the positive class
+    y_pred_proba = model.predict_proba(X_test)[:,-1]
 
     # Map predictions to binary ratings
     y_test_binary = [1 if rating > 4.5 else 0 for rating in y_test]
     y_pred_binary = [1 if rating > 4.5 else 0 for rating in y_pred]
 
     # Evaluate the model using the AUC-ROC score
-    auc_score = roc_auc_score(y_test_binary, y_pred_binary)
+    auc_score = roc_auc_score(y_test_binary, y_pred_proba)
     print("AUC-ROC Score:", auc_score)
 
 #this function helps get the features for the test data to submit to the leaderboard
@@ -234,15 +235,15 @@ def predict_test(model):
     #extract model features
     X = data.iloc[:, :-2]  # feature vectors
 
-    #make predictions
-    y_pred = model.predict(X)
+    #make probabilistic predictions for being part of class 5
+    y_pred = model.predict_proba(X)[:,-1]
 
-    #convert to binary
-    y_pred_binary = [1 if rating > 4.5 else 0 for rating in y_pred]
+    #convert to binary (no need for casting to binary)
+    #y_pred_binary = [1 if rating > 4.5 else 0 for rating in y_pred]
 
     with open('predicted_ratings_leaderboard.txt', 'w') as file:
     # Write each prediction to the file
-        for prediction in y_pred_binary:
+        for prediction in y_pred:
             file.write(str(prediction) + '\n')
 
 
@@ -269,10 +270,11 @@ if __name__ == '__main__':
 
     #NOTE: Only use one of the following two lines
     #perform grid search to get best model
-    # model = grid_search_rf(data)
+    model = grid_search_rf(data)
+    print('Finished grid search!')
 
     #load saved best model from last hyperparameter search
-    model = RandomForestClassifier(max_depth =  15, min_samples_leaf = 2, min_samples_split = 15, n_estimators =  200)
+    # model = RandomForestClassifier(max_depth =  15, min_samples_leaf = 2, min_samples_split = 15, n_estimators =  200)
 
     fit_predict_rf(model, data)
 
