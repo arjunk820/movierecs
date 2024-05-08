@@ -1,4 +1,4 @@
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import pandas as pd
 
 from train_valid_test_loader import load_train_valid_test_datasets
@@ -215,6 +215,33 @@ def fit_predict_rf(model, data):
     auc_score = roc_auc_score(y_test_binary, y_pred_proba)
     print("AUC-ROC Score:", auc_score)
 
+
+#this function takes in a randomforest model and some data, and outputs the AUC-ROC score on that data.
+def fit_predict_xgb(model, data):
+    # Identify feature and target variable
+    X = data.iloc[:, :-2]  # Feature vectors
+    y = data.iloc[:, -2]   # Labels
+
+    # Adjust class labels to start from 0
+    y_adjusted = y - 1
+
+    # Split into train and test
+    X_train, X_test, y_train, y_test = train_test_split(X, y_adjusted, test_size=0.2, random_state=42)
+
+    # Fit model to train data
+    model.fit(X_train, y_train)
+
+    # Make predictions
+    y_pred_proba = model.predict_proba(X_test)[:, -1]  # Get the probability of the positive class
+
+    # Map predictions to binary ratings
+    y_test_binary = [1 if rating > 2.5 else 0 for rating in y_test]  # Threshold adjusted for 0-4 ratings
+    y_pred_binary = [1 if rating > 0.5 else 0 for rating in y_pred_proba]  # Using predicted probabilities
+
+    # Evaluate the model using the AUC-ROC score
+    auc_score = roc_auc_score(y_test_binary, y_pred_proba)
+    print("AUC-ROC Score:", auc_score)
+
 #this function helps get the features for the test data to submit to the leaderboard
 def vectorize_test():
     #grab testing data
@@ -226,9 +253,19 @@ def vectorize_test():
 
     return data
 
+
 #this function helps generate our final predictions, it takes in a model and
 #writes binary predictions to a file
 def predict_test(model):
+
+    #load data
+    data = pd.read_csv('./data.csv')
+
+    X = data.iloc[:, :-2]  # Feature vectors
+    y = data.iloc[:, -2]   # Labels
+
+    #fit model on all data
+    model.fit(X,y)
 
     #get vectorized test data
     data = vectorize_test()
@@ -249,6 +286,152 @@ def predict_test(model):
 
 
 
+#Grid search for xgboost
+from xgboost import XGBClassifier
+
+def grid_search_xgb(data):
+
+    X = data.iloc[:, :-2]  # feature vectors
+    y = data.iloc[:, -2]   # labels
+
+    # Split the data into train and test sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
+
+    param_grid = {
+    'n_estimators': [100, 150],
+    'max_depth': [3, 5],
+    'min_child_weight': [1, 3],
+    'gamma': [0, 0.1],
+    'subsample': [0.8, 1.0],
+    'colsample_bytree': [0.8, 1.0],
+    'learning_rate': [0.05, 0.1]
+}
+    dummy_grid = {
+    'n_estimators': [100]     
+    }   
+
+    # Create an XGBoost classifier
+    xgb_classifier = XGBClassifier(random_state=42)
+
+    # Initialize GridSearch
+    grid_search = GridSearchCV(estimator=xgb_classifier, param_grid=param_grid, cv=5,
+                               n_jobs=-1, scoring='balanced_accuracy')
+    
+    #adjust values to be in line with what xgb expects
+    y_train_adjusted = y_train - 1
+    y_test_adjusted = y_test - 1
+
+    # Fit the grid search to the adjusted training data
+    grid_search.fit(X_train, y_train_adjusted)
+
+    # Evaluate the best model on the adjusted test set
+    test_score = grid_search.score(X_test, y_test_adjusted)
+    print("Test score:", test_score)
+
+    # Return the best model
+    return grid_search.best_estimator_  
+
+def grid_search_xgb(data):
+
+    X = data.iloc[:, :-2]  # feature vectors
+    y = data.iloc[:, -2]   # labels
+
+    # Split the data into train and test sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
+
+    param_grid = {
+    'n_estimators': [100, 150],
+    'max_depth': [3, 5],
+    'min_child_weight': [1, 3],
+    'gamma': [0, 0.1],
+    'subsample': [0.8, 1.0],
+    'colsample_bytree': [0.8, 1.0],
+    'learning_rate': [0.05, 0.1]
+}
+    dummy_grid = {
+    'n_estimators': [100]     
+    }   
+
+    # Create an XGBoost classifier
+    xgb_classifier = XGBClassifier(random_state=42)
+
+    # Initialize GridSearch
+    grid_search = GridSearchCV(estimator=xgb_classifier, param_grid=param_grid, cv=5,
+                               n_jobs=-1, scoring='balanced_accuracy')
+    
+    #adjust values to be in line with what xgb expects
+    y_train_adjusted = y_train - 1
+    y_test_adjusted = y_test - 1
+
+    # Fit the grid search to the adjusted training data
+    grid_search.fit(X_train, y_train_adjusted)
+
+    # Evaluate the best model on the adjusted test set
+    test_score = grid_search.score(X_test, y_test_adjusted)
+    print("Test score:", test_score)
+
+    # Return the best model
+    return grid_search.best_estimator_  
+from sklearn.ensemble import AdaBoostClassifier
+
+
+#ADABOOST
+def grid_search_adaboost(data):
+
+    X = data.iloc[:, :-2]  # feature vectors
+    y = data.iloc[:, -2]   # labels
+
+    # Split the data into train and test sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    param_grid = {
+        'n_estimators': [50, 100, 150],
+        'learning_rate': [0.1, 0.5, 1.0]
+    }
+
+    # Create an AdaBoost classifier
+    adaboost_classifier = AdaBoostClassifier(random_state=42)
+
+    # Initialize GridSearch
+    grid_search = GridSearchCV(estimator=adaboost_classifier, param_grid=param_grid, cv=5,
+                               n_jobs=-1, scoring='balanced_accuracy')
+
+    # Fit the grid search to the training data
+    grid_search.fit(X_train, y_train)
+
+    # Evaluate the best model on the test set
+    test_score = grid_search.score(X_test, y_test)
+    print("Test score:", test_score)
+
+    # Return the best model
+    return grid_search.best_estimator_
+
+def fit_predict_adaboost(model, data):
+    # Identify feature and target variable
+    X = data.iloc[:, :-2]  # Feature vectors
+    y = data.iloc[:, -2]   # Labels
+
+    # Adjust class labels to start from 0
+    y_adjusted = y - 1
+
+    # Split into train and test
+    X_train, X_test, y_train, y_test = train_test_split(X, y_adjusted, test_size=0.2, random_state=42)
+
+    # Fit model to train data
+    model.fit(X_train, y_train)
+
+    # Make predictions
+    y_pred_proba = model.predict_proba(X_test)[:, -1]  # Get the probability of the positive class
+
+    # Map predictions to binary ratings
+    y_test_binary = [1 if rating > 2.5 else 0 for rating in y_test]  # Threshold adjusted for 0-4 ratings
+    y_pred_binary = [1 if rating > 0.5 else 0 for rating in y_pred_proba]  # Using predicted probabilities
+
+    # Evaluate the model using the AUC-ROC score
+    auc_score = roc_auc_score(y_test_binary, y_pred_proba)
+    print("AUC-ROC Score:", auc_score)
 
 
 import time
@@ -279,12 +462,13 @@ if __name__ == '__main__':
 
     fit_predict_rf(model, data)
 
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    print('Elapsed time:', elapsed_time)
-
     #NOTE: We are currently only fitting on train set, make sure we fit on everything
     predict_test(model)
+
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+
+    print('Elapsed time:', elapsed_time)
 
 
 
