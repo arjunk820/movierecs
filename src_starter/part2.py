@@ -44,32 +44,21 @@ def create_vectors(train_tuple, valid_tuple, n_users, n_items, k):
     user_factors = algo.pu  # User factors
     item_factors = algo.qi  # Item factors
 
-    # More features
-    user_info = pd.read_csv('../data_movie_lens_100k/user_info.csv')
-    movie_info = pd.read_csv('../data_movie_lens_100k/movie_info.csv')
+    # Create DataFrame for user factors
+    user_factors_df = pd.DataFrame(user_factors, columns=[f'user_factor_{i}' for i in range(user_factors.shape[1])])
+    user_factors_df['userID'] = df['userID'].unique()
 
-    user_ages = user_info.loc[user_info['user_id'].isin(df['userID']), 'age'].tolist()
-    user_genders = user_info.loc[user_info['user_id'].isin(df['userID']), 'is_male'].tolist()
-    movie_years = movie_info.loc[movie_info['item_id'].isin(df['itemID']), 'release_year'].tolist()
+    # Create DataFrame for item factors
+    item_factors_df = pd.DataFrame(item_factors, columns=[f'item_factor_{i}' for i in range(item_factors.shape[1])])
+    item_factors_df['itemID'] = df['itemID'].unique()
 
-    # Binary labels for ratings
-    binary_rating_list = [1 if rating >= 4.5 else 0 for rating in df['rating']]
+    # Merge user factors into ratings DataFrame based on user ID
+    final_df = pd.merge(df, user_factors_df, on='userID')
 
-    features_df = pd.DataFrame({
-        'user': df['userID'],
-        'item': df['itemID'],
-        'user_age': user_ages,
-        'user_gender': user_genders,
-        'movie_year': movie_years,
-        'binary_rating': binary_rating_list
-    })
+    # Merge item factors into final DataFrame based on item ID
+    final_df = pd.merge(final_df, item_factors_df, on='itemID')
 
-    # Append SVD factors to features dataframe
-    for i in range(k):
-        features_df[f'user_factor_{i}'] = user_factors[:, i]
-        features_df[f'item_factor_{i}'] = item_factors[:, i]
-
-    return features_df
+    return final_df
 
 #create vectors for testing data to submit to leaderboard
 def create_vectors_test_data(data):
@@ -164,43 +153,43 @@ from sklearn.ensemble import RandomForestClassifier
 
 from sklearn.model_selection import train_test_split
 
-def grid_search_rf(data):
+# def grid_search_rf(data):
 
-    X = data.iloc[:, :-2]  # feature vectors
-    y = data.iloc[:, -2]   # labels
+#     X = data.iloc[:, :-2]  # feature vectors
+#     y = data.iloc[:, -2]   # labels
 
-    # Split the data into train and test sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+#     # Split the data into train and test sets
+#     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    param_grid = {
-    'n_estimators': [100, 150, 200],  
-    'max_depth': [None, 10, 15, 20],    
-    'min_samples_split': [5, 10, 15],   
-    'min_samples_leaf': [2, 4, 6]      
-    }   
-    dummy_grid = {
-    'n_estimators': [100]     
-    }   
+#     param_grid = {
+#     'n_estimators': [100, 150, 200],  
+#     'max_depth': [None, 10, 15, 20],    
+#     'min_samples_split': [5, 10, 15],   
+#     'min_samples_leaf': [2, 4, 6]      
+#     }   
+#     dummy_grid = {
+#     'n_estimators': [100]     
+#     }   
 
-    # Create a Random Forest classifier
-    rf_classifier = RandomForestClassifier(random_state=42)
+#     # Create a Random Forest classifier
+#     rf_classifier = RandomForestClassifier(random_state=42)
 
-    # Initialize GridSearch
-    grid_search = GridSearchCV(estimator=rf_classifier, param_grid=param_grid, cv=5,
-                                n_jobs=-1, scoring= 'balanced_accuracy')
+#     # Initialize GridSearch
+#     grid_search = GridSearchCV(estimator=rf_classifier, param_grid=param_grid, cv=5,
+#                                 n_jobs=-1, scoring= 'balanced_accuracy')
 
-    # Fit the grid search to the training data
-    grid_search.fit(X_train, y_train)
+#     # Fit the grid search to the training data
+#     grid_search.fit(X_train, y_train)
 
-    # Print best parameters found
-    print("Best parameters:", grid_search.best_params_)
+#     # Print best parameters found
+#     print("Best parameters:", grid_search.best_params_)
 
-    # Evaluate the best model on the test set
-    test_score = grid_search.score(X_test, y_test)
-    print("Test score:", test_score)
+#     # Evaluate the best model on the test set
+#     test_score = grid_search.score(X_test, y_test)
+#     print("Test score:", test_score)
 
-    # Return the best model
-    return grid_search.best_estimator_
+#     # Return the best model
+#     return grid_search.best_estimator_
 
 #this function takes in a randomforest model and some data, and outputs the AUC-ROC score on that data.
 def fit_predict_rf(model, data):
@@ -299,48 +288,48 @@ def predict_test(model):
 
 
 
-def grid_search_xgb(data):
+# def grid_search_xgb(data):
 
-    X = data.iloc[:, :-2]  # feature vectors
-    y = data.iloc[:, -2]   # labels
+#     X = data.iloc[:, :-2]  # feature vectors
+#     y = data.iloc[:, -2]   # labels
 
-    # Split the data into train and test sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+#     # Split the data into train and test sets
+#     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
 
-    param_grid = {
-    'n_estimators': [100, 150],
-    'max_depth': [3, 5],
-    'min_child_weight': [1, 3],
-    'gamma': [0, 0.1],
-    'subsample': [0.8, 1.0],
-    'colsample_bytree': [0.8, 1.0],
-    'learning_rate': [0.05, 0.1]
-}
-    dummy_grid = {
-    'n_estimators': [100]     
-    }   
+#     param_grid = {
+#     'n_estimators': [100, 150],
+#     'max_depth': [3, 5],
+#     'min_child_weight': [1, 3],
+#     'gamma': [0, 0.1],
+#     'subsample': [0.8, 1.0],
+#     'colsample_bytree': [0.8, 1.0],
+#     'learning_rate': [0.05, 0.1]
+# }
+#     dummy_grid = {
+#     'n_estimators': [100]     
+#     }   
 
-    # Create an XGBoost classifier
-    xgb_classifier = XGBClassifier(random_state=42)
+#     # Create an XGBoost classifier
+#     xgb_classifier = XGBClassifier(random_state=42)
 
-    # Initialize GridSearch
-    grid_search = GridSearchCV(estimator=xgb_classifier, param_grid=param_grid, cv=5,
-                               n_jobs=-1, scoring='balanced_accuracy')
+#     # Initialize GridSearch
+#     grid_search = GridSearchCV(estimator=xgb_classifier, param_grid=param_grid, cv=5,
+#                                n_jobs=-1, scoring='balanced_accuracy')
     
-    #adjust values to be in line with what xgb expects
-    y_train_adjusted = y_train - 1
-    y_test_adjusted = y_test - 1
+#     #adjust values to be in line with what xgb expects
+#     y_train_adjusted = y_train - 1
+#     y_test_adjusted = y_test - 1
 
-    # Fit the grid search to the adjusted training data
-    grid_search.fit(X_train, y_train_adjusted)
+#     # Fit the grid search to the adjusted training data
+#     grid_search.fit(X_train, y_train_adjusted)
 
-    # Evaluate the best model on the adjusted test set
-    test_score = grid_search.score(X_test, y_test_adjusted)
-    print("Test score:", test_score)
+#     # Evaluate the best model on the adjusted test set
+#     test_score = grid_search.score(X_test, y_test_adjusted)
+#     print("Test score:", test_score)
 
-    # Return the best model
-    return grid_search.best_estimator_  
+#     # Return the best model
+#     return grid_search.best_estimator_  
 
 def grid_search_xgb(data):
 
@@ -387,84 +376,145 @@ def grid_search_xgb(data):
 from sklearn.ensemble import AdaBoostClassifier
 
 
-#ADABOOST
-def grid_search_adaboost(data):
+# #ADABOOST
+# def grid_search_adaboost(data):
 
-    X = data.iloc[:, :-2]  # feature vectors
-    y = data.iloc[:, -2]   # labels
+#     X = data.iloc[:, :-2]  # feature vectors
+#     y = data.iloc[:, -2]   # labels
 
-    # Split the data into train and test sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+#     # Split the data into train and test sets
+#     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    param_grid = {
-        'n_estimators': [50, 100, 150],
-        'learning_rate': [0.1, 0.5, 1.0]
-    }
+#     param_grid = {
+#         'n_estimators': [50, 100, 150],
+#         'learning_rate': [0.1, 0.5, 1.0]
+#     }
 
-    # Create an AdaBoost classifier
-    adaboost_classifier = AdaBoostClassifier(random_state=42)
+#     # Create an AdaBoost classifier
+#     adaboost_classifier = AdaBoostClassifier(random_state=42)
 
-    # Initialize GridSearch
-    grid_search = GridSearchCV(estimator=adaboost_classifier, param_grid=param_grid, cv=5,
-                               n_jobs=-1, scoring='balanced_accuracy')
+#     # Initialize GridSearch
+#     grid_search = GridSearchCV(estimator=adaboost_classifier, param_grid=param_grid, cv=5,
+#                                n_jobs=-1, scoring='balanced_accuracy')
 
-    # Fit the grid search to the training data
-    grid_search.fit(X_train, y_train)
+#     # Fit the grid search to the training data
+#     grid_search.fit(X_train, y_train)
 
-    # Evaluate the best model on the test set
-    test_score = grid_search.score(X_test, y_test)
-    print("Test score:", test_score)
+#     # Evaluate the best model on the test set
+#     test_score = grid_search.score(X_test, y_test)
+#     print("Test score:", test_score)
 
-    # Return the best model
-    return grid_search.best_estimator_
+#     # Return the best model
+#     return grid_search.best_estimator_
 
-def fit_predict_adaboost(model, data):
-    # Identify feature and target variable
-    X = data.iloc[:, :-2]  # Feature vectors
-    y = data.iloc[:, -2]   # Labels
+# def fit_predict_adaboost(model, data):
+#     # Identify feature and target variable
+#     X = data.iloc[:, :-2]  # Feature vectors
+#     y = data.iloc[:, -2]   # Labels
 
-    # Adjust class labels to start from 0
-    y_adjusted = y - 1
+#     # Adjust class labels to start from 0
+#     y_adjusted = y - 1
 
-    # Split into train and test
-    X_train, X_test, y_train, y_test = train_test_split(X, y_adjusted, test_size=0.2, random_state=42)
+#     # Split into train and test
+#     X_train, X_test, y_train, y_test = train_test_split(X, y_adjusted, test_size=0.2, random_state=42)
 
-    # Fit model to train data
-    model.fit(X_train, y_train)
+#     # Fit model to train data
+#     model.fit(X_train, y_train)
 
-    # Make predictions
-    y_pred_proba = model.predict_proba(X_test)[:, -1]  # Get the probability of the positive class
+#     # Make predictions
+#     y_pred_proba = model.predict_proba(X_test)[:, -1]  # Get the probability of the positive class
 
-    # Map predictions to binary ratings
-    y_test_binary = [1 if rating > 2.5 else 0 for rating in y_test]  # Threshold adjusted for 0-4 ratings
-    y_pred_binary = [1 if rating > 0.5 else 0 for rating in y_pred_proba]  # Using predicted probabilities
+#     # Map predictions to binary ratings
+#     y_test_binary = [1 if rating > 2.5 else 0 for rating in y_test]  # Threshold adjusted for 0-4 ratings
+#     y_pred_binary = [1 if rating > 0.5 else 0 for rating in y_pred_proba]  # Using predicted probabilities
 
-    # Evaluate the model using the AUC-ROC score
-    auc_score = roc_auc_score(y_test_binary, y_pred_proba)
-    print("AUC-ROC Score:", auc_score)
+#     # Evaluate the model using the AUC-ROC score
+#     auc_score = roc_auc_score(y_test_binary, y_pred_proba)
+#     print("AUC-ROC Score:", auc_score)
 
 def create_vectors_and_fit_models(k):
+
+
     data = create_vectors(train_tuple, valid_tuple, n_users, n_items, k=k)
-    
-    X = data.drop(['binary_rating'], axis=1)
+
+    #NOTE: We should discuss if it matters whether we just make a binary prediction or make a prediction and then convert
+    #add binary ratings column
+    bin_ratings = [1 if rating > 4.5 else 0 for rating in data['rating']]  # Threshold adjusted for 0-4 ratings
+    data['binary_rating'] = bin_ratings
+
+    #separate features and target
+    X = data.drop(['rating', 'binary_rating'], axis=1)
     y = data['binary_rating']
 
     # Split the data
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     # Random Forest Classifier
-    rf = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=42)
+    #perform grid search
+    rf = rf_grid_search(X,y)
+    print('finished grid search')
     rf.fit(X_train, y_train)
     rf_preds = rf.predict_proba(X_test)[:, 1]
     auc_rf = roc_auc_score(y_test, rf_preds)
     auc_scores_rf.loc[k, "RF"] = auc_rf
     
     # XGBoost Classifier
-    xgb = XGBClassifier(n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42, use_label_encoder=False, eval_metric='logloss')
+    xgb = xgb_grid_search(X,y)
+    print('finished xgb grid search')
     xgb.fit(X_train, y_train)
     xgb_preds = xgb.predict_proba(X_test)[:, 1]
     auc_xgb = roc_auc_score(y_test, xgb_preds)
     auc_scores_xgb.loc[k, "XGB"] = auc_xgb
+
+#this function performs a hyperparameter grid search on the random forest model.
+def rf_grid_search(X, y):
+    # Define the parameter grid to search
+    param_grid = {
+    'n_estimators': [50, 100],
+    'max_depth': [None, 10],
+    'min_samples_split': [2, 5],
+    'min_samples_leaf': [1, 2]
+}
+
+    # Initialize Random Forest classifier
+    rf = RandomForestClassifier(random_state=42)
+
+    # Perform grid search
+    grid_search = GridSearchCV(estimator=rf, param_grid=param_grid, cv=5, scoring='balanced_accuracy', n_jobs=-1)
+    grid_search.fit(X, y)
+
+    # Get the best model
+    best_rf = grid_search.best_estimator_
+
+    #print best parameters
+    print('random forest best parameters:', grid_search.best_params_)
+
+    return best_rf
+
+#this function performs a hyperparameter grid search for the xgboost model
+import xgboost as xgb
+def xgb_grid_search(X, y):
+    # Define the parameter grid to search
+    param_grid = {
+        'n_estimators': [50, 100, 150],
+        'max_depth': [3, 5, 7],
+        'learning_rate': [0.01, 0.1, 0.3]
+    }
+
+    # Initialize XGBoost classifier
+    xgb_classifier = xgb.XGBClassifier(random_state=42)
+
+    # Perform grid search
+    grid_search = GridSearchCV(estimator=xgb_classifier, param_grid=param_grid, cv=5, scoring='balanced_accuracy', n_jobs=-1)
+    grid_search.fit(X, y)
+
+    # Get the best model
+    best_xgb = grid_search.best_estimator_
+
+    #print best parameters
+    print('xgb best parameters:', grid_search.best_params_)
+
+    return best_xgb
 
 
 import time
@@ -486,48 +536,6 @@ if __name__ == '__main__':
     # Print the AUC scores
     print("AUC Scores for Random Forest:", auc_scores_rf)
     print("AUC Scores for XGBoost:", auc_scores_xgb)
-    
-    #NOTE: Only use one of the following two lines
-    #create data vectors
-
-    # randomForest = True
-
-    # if not randomForest:
-    #     data = create_vectors(train_tuple, valid_tuple, n_users, n_items)
-
-    #     # load data from csv file
-    #     trainset = tuple_to_surprise_dataset(train_tuple).build_full_trainset()
-
-    #     for k in [2, 10, 50]:
-    #         algo = SVD(n_factors=k, random_state=42)
-    #         algo.fit(trainset)
-            
-    #         user_factors = algo.pu
-    #         item_factors = algo.qi
-
-    #         user_id = 1
-    #         item_id = 101
-
-    #         prediction = algo.predict(user_id, item_id)
-    #         print(f'Prediction for user {user_id} and item {item_id}: {prediction.est}')
-
-    # else:
-
-    # #NOTE: Only use one of the following two lines
-    # #perform grid search to get best model
-
-    #     data = pd.read_csv('./data.csv')
-
-    #     model = grid_search_rf(data)
-    #     print('Finished grid search!')
-
-    #     #load saved best model from last hyperparameter search
-    #     # model = RandomForestClassifier(max_depth =  15, min_samples_leaf = 2, min_samples_split = 15, n_estimators =  200)
-
-    #     fit_predict_rf(model, data)
-
-    #     #NOTE: We are currently only fitting on train set, make sure we fit on everything
-    #     predict_test(model)
 
     end_time = time.time()
     elapsed_time = end_time - start_time
