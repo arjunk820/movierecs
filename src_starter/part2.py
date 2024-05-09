@@ -1,6 +1,11 @@
 # import matplotlib.pyplot as plt
-import pandas as pd
 from surprise import SVD, Dataset, Reader
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_auc_score
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
+from sklearn.model_selection import GridSearchCV
 
 from train_valid_test_loader import load_train_valid_test_datasets
 
@@ -20,59 +25,51 @@ def tuple_to_surprise_dataset(tupl):
 
     return dataset
 
-def create_vectors(train_tuple, valid_tuple, n_users, n_items):
+def create_vectors(train_tuple, valid_tuple, n_users, n_items, k):
 
-    #get list of users
-    user_list_train = list(train_tuple[0])
-    user_list_valid = list(valid_tuple[0])
+    ratings_dict = {
+        "userID": list(train_tuple[0]) + list(valid_tuple[0]),
+        "itemID": list(train_tuple[1]) + list(valid_tuple[1]),
+        "rating": list(train_tuple[2]) + list(valid_tuple[2]),
+    }
 
-    user_list = list(user_list_train + user_list_valid)
+    df = pd.DataFrame(ratings_dict)
+    reader = Reader(rating_scale=(1, 5))
+    data = Dataset.load_from_df(df[['userID', 'itemID', 'rating']], reader)
+    trainset = data.build_full_trainset()
 
-    #get list of items
-    item_list_train = list(train_tuple[1])
-    item_list_valid = list(valid_tuple[1])
+    algo = SVD(n_factors=k, random_state=42)
+    algo.fit(trainset)
 
-    item_list = list(item_list_train + item_list_valid)
+    user_factors = algo.pu  # User factors
+    item_factors = algo.qi  # Item factors
 
-    #get information from dataframes
+    # More features
     user_info = pd.read_csv('../data_movie_lens_100k/user_info.csv')
     movie_info = pd.read_csv('../data_movie_lens_100k/movie_info.csv')
-    
-    #get user ages and genders
-    user_ages = []
-    user_genders = []
-    for user_id in user_list:
-        user_ages.append(user_info[user_info['user_id'] == user_id]['age'].iloc[0])
-        user_genders.append(user_info[user_info['user_id'] == user_id]['is_male'].iloc[0])
 
-    #get years movies were released
-    movie_years  = []
-    for movie in item_list:
-        movie_years.append(movie_info[movie_info['item_id'] == movie]['release_year'].iloc[0])
-       
-    #get ratings and create df
-    rating_list_train = list(train_tuple[2])
-    rating_list_valid = list(valid_tuple[2])
+    user_ages = user_info.loc[user_info['user_id'].isin(df['userID']), 'age'].tolist()
+    user_genders = user_info.loc[user_info['user_id'].isin(df['userID']), 'is_male'].tolist()
+    movie_years = movie_info.loc[movie_info['item_id'].isin(df['itemID']), 'release_year'].tolist()
 
-    rating_list = list(rating_list_train + rating_list_valid)
+    # Binary labels for ratings
+    binary_rating_list = [1 if rating >= 4.5 else 0 for rating in df['rating']]
 
-    binary_rating_list = [1 if rating >= 4.5 else 0 for rating in rating_list]
-
-    # create dataframe
-    data = pd.DataFrame({
-        'user': user_list,
-        'item': item_list,
+    features_df = pd.DataFrame({
+        'user': df['userID'],
+        'item': df['itemID'],
         'user_age': user_ages,
         'user_gender': user_genders,
         'movie_year': movie_years,
-        'rating': rating_list,
         'binary_rating': binary_rating_list
-    })    
+    })
 
-    # save data to csv for later use
-    data.to_csv('data_surprise.csv', index=False, header=False)
-    
-    return data
+    # Append SVD factors to features dataframe
+    for i in range(k):
+        features_df[f'user_factor_{i}'] = user_factors[:, i]
+        features_df[f'item_factor_{i}'] = item_factors[:, i]
+
+    return features_df
 
 #create vectors for testing data to submit to leaderboard
 def create_vectors_test_data(data):
@@ -301,8 +298,6 @@ def predict_test(model):
 
 
 
-#Grid search for xgboost
-from xgboost import XGBClassifier
 
 def grid_search_xgb(data):
 
@@ -448,6 +443,29 @@ def fit_predict_adaboost(model, data):
     auc_score = roc_auc_score(y_test_binary, y_pred_proba)
     print("AUC-ROC Score:", auc_score)
 
+def create_vectors_and_fit_models(k):
+    data = create_vectors(train_tuple, valid_tuple, n_users, n_items, k=k)
+    
+    X = data.drop(['binary_rating'], axis=1)
+    y = data['binary_rating']
+
+    # Split the data
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Random Forest Classifier
+    rf = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=42)
+    rf.fit(X_train, y_train)
+    rf_preds = rf.predict_proba(X_test)[:, 1]
+    auc_rf = roc_auc_score(y_test, rf_preds)
+    auc_scores_rf.loc[k, "RF"] = auc_rf
+    
+    # XGBoost Classifier
+    xgb = XGBClassifier(n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42, use_label_encoder=False, eval_metric='logloss')
+    xgb.fit(X_train, y_train)
+    xgb_preds = xgb.predict_proba(X_test)[:, 1]
+    auc_xgb = roc_auc_score(y_test, xgb_preds)
+    auc_scores_xgb.loc[k, "XGB"] = auc_xgb
+
 
 import time
 if __name__ == '__main__':
@@ -459,47 +477,57 @@ if __name__ == '__main__':
     train_tuple, valid_tuple, test_tuple, n_users, n_items = \
         load_train_valid_test_datasets()
     
+    auc_scores_rf = pd.DataFrame(index=[2, 10, 50], columns=["RF"])
+    auc_scores_xgb = pd.DataFrame(index=[2, 10, 50], columns=["XGB"])
+
+    for k in [2, 10, 50]:
+        create_vectors_and_fit_models(k)
+
+    # Print the AUC scores
+    print("AUC Scores for Random Forest:", auc_scores_rf)
+    print("AUC Scores for XGBoost:", auc_scores_xgb)
+    
     #NOTE: Only use one of the following two lines
     #create data vectors
 
-    randomForest = True
+    # randomForest = True
 
-    if not randomForest:
-        data = create_vectors(train_tuple, valid_tuple, n_users, n_items)
+    # if not randomForest:
+    #     data = create_vectors(train_tuple, valid_tuple, n_users, n_items)
 
-        # load data from csv file
-        trainset = tuple_to_surprise_dataset(train_tuple).build_full_trainset()
+    #     # load data from csv file
+    #     trainset = tuple_to_surprise_dataset(train_tuple).build_full_trainset()
 
-        for k in [2, 10, 50]:
-            algo = SVD(n_factors=k, random_state=42)
-            algo.fit(trainset)
+    #     for k in [2, 10, 50]:
+    #         algo = SVD(n_factors=k, random_state=42)
+    #         algo.fit(trainset)
             
-            user_factors = algo.pu
-            item_factors = algo.qi
+    #         user_factors = algo.pu
+    #         item_factors = algo.qi
 
-            user_id = 1
-            item_id = 101
+    #         user_id = 1
+    #         item_id = 101
 
-            prediction = algo.predict(user_id, item_id)
-            print(f'Prediction for user {user_id} and item {item_id}: {prediction.est}')
+    #         prediction = algo.predict(user_id, item_id)
+    #         print(f'Prediction for user {user_id} and item {item_id}: {prediction.est}')
 
-    else:
+    # else:
 
-    #NOTE: Only use one of the following two lines
-    #perform grid search to get best model
+    # #NOTE: Only use one of the following two lines
+    # #perform grid search to get best model
 
-        data = pd.read_csv('./data.csv')
+    #     data = pd.read_csv('./data.csv')
 
-        model = grid_search_rf(data)
-        print('Finished grid search!')
+    #     model = grid_search_rf(data)
+    #     print('Finished grid search!')
 
-        #load saved best model from last hyperparameter search
-        # model = RandomForestClassifier(max_depth =  15, min_samples_leaf = 2, min_samples_split = 15, n_estimators =  200)
+    #     #load saved best model from last hyperparameter search
+    #     # model = RandomForestClassifier(max_depth =  15, min_samples_leaf = 2, min_samples_split = 15, n_estimators =  200)
 
-        fit_predict_rf(model, data)
+    #     fit_predict_rf(model, data)
 
-        #NOTE: We are currently only fitting on train set, make sure we fit on everything
-        predict_test(model)
+    #     #NOTE: We are currently only fitting on train set, make sure we fit on everything
+    #     predict_test(model)
 
     end_time = time.time()
     elapsed_time = end_time - start_time
