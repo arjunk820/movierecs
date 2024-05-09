@@ -1,7 +1,24 @@
 # import matplotlib.pyplot as plt
 import pandas as pd
+from surprise import SVD, Dataset, Reader
 
 from train_valid_test_loader import load_train_valid_test_datasets
+
+def tuple_to_surprise_dataset(tupl):
+
+    ratings_dict = {
+        "userID": tupl[0],
+        "itemID": tupl[1],
+        "rating": tupl[2],
+    }
+
+    df = pd.DataFrame(ratings_dict)
+
+    reader = Reader(rating_scale=(1, 5))
+
+    dataset = Dataset.load_from_df(df[["userID", "itemID", "rating"]], reader)
+
+    return dataset
 
 def create_vectors(train_tuple, valid_tuple, n_users, n_items):
 
@@ -25,8 +42,8 @@ def create_vectors(train_tuple, valid_tuple, n_users, n_items):
     user_ages = []
     user_genders = []
     for user_id in user_list:
-        user_ages.append( user_info[user_info['user_id'] == user_id]['age'].iloc[0])
-        user_genders.append( user_info[user_info['user_id'] == user_id]['is_male'].iloc[0])
+        user_ages.append(user_info[user_info['user_id'] == user_id]['age'].iloc[0])
+        user_genders.append(user_info[user_info['user_id'] == user_id]['is_male'].iloc[0])
 
     #get years movies were released
     movie_years  = []
@@ -39,11 +56,9 @@ def create_vectors(train_tuple, valid_tuple, n_users, n_items):
 
     rating_list = list(rating_list_train + rating_list_valid)
 
-    #
     binary_rating_list = [1 if rating >= 4.5 else 0 for rating in rating_list]
 
-
-    #create dataframe
+    # create dataframe
     data = pd.DataFrame({
         'user': user_list,
         'item': item_list,
@@ -54,8 +69,8 @@ def create_vectors(train_tuple, valid_tuple, n_users, n_items):
         'binary_rating': binary_rating_list
     })    
 
-    #save data to csv for later use
-    data.to_csv('data.csv', index=False)
+    # save data to csv for later use
+    data.to_csv('data_surprise.csv', index=False, header=False)
     
     return data
 
@@ -446,31 +461,47 @@ if __name__ == '__main__':
     
     #NOTE: Only use one of the following two lines
     #create data vectors
-    # data = create_vectors(train_tuple, valid_tuple, n_users, n_items)
 
-    #load data from csv file
-    data = pd.read_csv('./data.csv')
+    randomForest = True
 
+    if not randomForest:
+        data = create_vectors(train_tuple, valid_tuple, n_users, n_items)
+
+        # load data from csv file
+        trainset = tuple_to_surprise_dataset(train_tuple).build_full_trainset()
+
+        for k in [2, 10, 50]:
+            algo = SVD(n_factors=k, random_state=42)
+            algo.fit(trainset)
+            
+            user_factors = algo.pu
+            item_factors = algo.qi
+
+            user_id = 1
+            item_id = 101
+
+            prediction = algo.predict(user_id, item_id)
+            print(f'Prediction for user {user_id} and item {item_id}: {prediction.est}')
+
+    else:
 
     #NOTE: Only use one of the following two lines
     #perform grid search to get best model
-    model = grid_search_rf(data)
-    print('Finished grid search!')
 
-    #load saved best model from last hyperparameter search
-    # model = RandomForestClassifier(max_depth =  15, min_samples_leaf = 2, min_samples_split = 15, n_estimators =  200)
+        data = pd.read_csv('./data.csv')
 
-    fit_predict_rf(model, data)
+        model = grid_search_rf(data)
+        print('Finished grid search!')
 
-    #NOTE: We are currently only fitting on train set, make sure we fit on everything
-    predict_test(model)
+        #load saved best model from last hyperparameter search
+        # model = RandomForestClassifier(max_depth =  15, min_samples_leaf = 2, min_samples_split = 15, n_estimators =  200)
+
+        fit_predict_rf(model, data)
+
+        #NOTE: We are currently only fitting on train set, make sure we fit on everything
+        predict_test(model)
 
     end_time = time.time()
     elapsed_time = end_time - start_time
 
     print('Elapsed time:', elapsed_time)
-
-
-
-
-
